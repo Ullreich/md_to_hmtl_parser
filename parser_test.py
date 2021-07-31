@@ -39,5 +39,5 @@ tokens = ofp.Lexer(charread)
 tokens.tokenize()
 tokens._print()
 
-parse = ofp.Parser("parse.html", tokens)
+parse = ofp.Parser("parse", tokens)
 parse.parse()

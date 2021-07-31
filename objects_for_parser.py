@@ -241,10 +241,11 @@ class Lexer:
             # check for bold
             elif (self.charreaderobj.peek(0) in self.bold_italic_chars) and \
                  (self.charreaderobj.peek(1) in self.bold_italic_chars) and not \
-                 (self.charreaderobj.peek(2) == " "):
+                 (self.charreaderobj.peek(2) in [" ", self.charreaderobj.peek(0)]):
                 return_string += self.bold_find(self.charreaderobj.peek())
             # check for italics
-            if (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "):
+            if (self.charreaderobj.peek(0) in self.bold_italic_chars) and not \
+               (self.charreaderobj.peek(1) in [" ", self.charreaderobj.peek(0)]):
                 return_string += self.italics_find(self.charreaderobj.peek())
             # check for special chars
             if (self.charreaderobj.peek(0) in self.special_chars):
@@ -279,10 +280,10 @@ class Lexer:
 
 class Parser:
     def __init__(self, filename, lexer_obj):
-        self.filename = filename
+        self.filename = filename+".html"
         
         # things that always need to be written
-        self.beginning =  "<!DOCTYPE html>\n<html>\n<body>\n"
+        self.beginning =  f"<!DOCTYPE html>\n<html>\n<head>\n<title>{filename}</title>\n</head><body>\n"
         self.end = "</body>\n</html>\n"
         
         # list of special chars
