@@ -55,6 +55,8 @@ class CharacterReader:
 #       ol    | content of list
 # italics:
 #   i     | content of italics
+# bold:
+#   b     | contents of bold
 # =============================================================================
 
 class Lexer:
@@ -114,21 +116,20 @@ class Lexer:
 # =============================================================================
 #     # if we are in a italics state
 # =============================================================================
-    def italics_find(self):
-        # the reason we don't just delete this is so that, in case it wont be
-        # italicised we dont lose this char in the string
+    def italics_find(self, passed_symbol):
         return_italics = ""
         is_italics = "False"
+        # delete the *
         self.charreaderobj.consume()
         
         while True:
             # in this case we dont find the end of the italics part
             # dont forget to add the swallowed * at the beginning
             if self.charreaderobj.isEOF() or self.charreaderobj.peek() == "\n":
-                return_italics = "*"+return_italics
+                return_italics = passed_symbol + return_italics
                 break
             # in this case we find the end of the italics part
-            elif (self.charreaderobj.peek() == "*") and (return_italics[-1] not in [" ", "*"]):
+            elif (self.charreaderobj.peek() == passed_symbol) and (return_italics[-1] != " "):
                 self.charreaderobj.consume()
                 is_italics = True
                 break
@@ -140,7 +141,40 @@ class Lexer:
             return "<em>"+return_italics+"</em>"
         else:
             return return_italics
-            
+        
+# =============================================================================
+#     # if we are in a bold state
+# =============================================================================
+    def bold_find(self, passed_symbol):
+        return_bold = ""
+        is_bold = "False"
+        
+        #delete the ** or __
+        self.charreaderobj.consume()
+        self.charreaderobj.consume()
+        
+        while True:
+            # in this case we dont find the end of the italics part
+            # dont forget to add the swallowed ** at the beginning
+            if self.charreaderobj.isEOF() or self.charreaderobj.peek() == "\n":
+                return_bold = passed_symbol*2+return_bold
+                break
+            # in this case we find the end of the italics part
+            elif (self.charreaderobj.peek() == passed_symbol) and \
+                 (self.charreaderobj.peek(1) == passed_symbol) and \
+                 (return_bold[-1] != " "):
+                self.charreaderobj.consume()
+                self.charreaderobj.consume()
+                is_bold = True
+                break
+            else:
+                return_bold += self.charreaderobj.peek()
+                self.charreaderobj.consume()
+        
+        if is_bold:
+            return "<strong>"+return_bold+"</strong>"
+        else:
+            return return_bold
 # =============================================================================
 #     # if we are in a special char state
 # =============================================================================
@@ -172,7 +206,8 @@ class Lexer:
         if (len(return_head) <= 6) and (self.charreaderobj.peek(0) == " "):
             
             #everything ucharreaderobj.consume(0)p to a \n is part of the heading
-            while (not self.charreaderobj.isEOF()) and (not self.charreaderobj.peek(0) == "\n"):
+            while (not self.charreaderobj.isEOF()) and not \
+                  (self.charreaderobj.peek(0) == "\n"):
                 return_string = return_string + self.charreaderobj.peek(0)
                 self.charreaderobj.consume(0)
             #consume \n
@@ -203,9 +238,14 @@ class Lexer:
         while True:
             if self.charreaderobj.isEOF():
                 break
+            # check for bold
+            elif (self.charreaderobj.peek(0) in self.bold_italic_chars) and \
+                 (self.charreaderobj.peek(1) in self.bold_italic_chars) and not \
+                 (self.charreaderobj.peek(2) == " "):
+                return_string += self.bold_find(self.charreaderobj.peek())
             # check for italics
             if (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "):
-                return_string += self.italics_find()
+                return_string += self.italics_find(self.charreaderobj.peek())
             # check for special chars
             if (self.charreaderobj.peek(0) in self.special_chars):
                 break
