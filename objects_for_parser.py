@@ -118,25 +118,28 @@ class Lexer:
         # the reason we don't just delete this is so that, in case it wont be
         # italicised we dont lose this char in the string
         return_italics = ""
+        is_italics = "False"
         self.charreaderobj.consume()
         
         while True:
             # in this case we dont find the end of the italics part
             # dont forget to add the swallowed * at the beginning
             if self.charreaderobj.isEOF() or self.charreaderobj.peek() == "\n":
-                self.tokenlist.append(("s", "*"+return_italics))
-                return_italics = False
+                return_italics = "*"+return_italics
                 break
             # in this case we find the end of the italics part
             elif (self.charreaderobj.peek() == "*") and (return_italics[-1] not in [" ", "*"]):
                 self.charreaderobj.consume()
+                is_italics = True
                 break
             else:
                 return_italics += self.charreaderobj.peek()
                 self.charreaderobj.consume()
         
-        if return_italics:
-            self.tokenlist.append(("i", return_italics))
+        if is_italics:
+            return "<em>"+return_italics+"</em>"
+        else:
+            return return_italics
             
 # =============================================================================
 #     # if we are in a special char state
@@ -200,17 +203,12 @@ class Lexer:
         while True:
             if self.charreaderobj.isEOF():
                 break
-            elif (self.charreaderobj.peek(0) in self.special_chars):
+            # check for italics
+            if (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "):
+                return_string += self.italics_find()
+            # check for special chars
+            if (self.charreaderobj.peek(0) in self.special_chars):
                 break
-            elif (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "):
-                # if you want the string returned instead of appended
-                if append:
-                    self.tokenlist.append(("s", return_string))
-                else:
-                    return return_string
-                return_string = ""
-                
-                self.italics_find()
             return_string = return_string + self.charreaderobj.peek(0)
             self.charreaderobj.consume(0)
         

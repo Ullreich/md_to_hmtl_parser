@@ -2,7 +2,7 @@
 
 ### Fachschaftspc
 hello *this is emphasized* hello
-
+helo
 * 600 euro
 	* 2 Monitore (ca 200 euro)
 	* 2 Tastaturen (ca 60 euro)
@@ -13,7 +13,7 @@ hello *this is emphasized* hello
 * buy computer stuff and do cable management
 * Buy plants
 * Admin access:
-	* Nextcloud
+	* Nextcloud *now this should work* together with this
 	* Mailserver
 	* Homepage
 * internal website stuff (see simon)
