@@ -35,9 +35,9 @@ file.close()
 charread = ofp.CharacterReader(file.read())
 #charread._print()
 
-tokens = ofp.Lexer()
-tokens.tokenize(charread)
+tokens = ofp.Lexer(charread)
+tokens.tokenize()
 tokens._print()
 
-parse = ofp.Parser("parse.html")
-parse.parse(tokens)
+parse = ofp.Parser("parse.html", tokens)
+parse.parse()

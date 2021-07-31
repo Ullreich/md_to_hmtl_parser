@@ -2,11 +2,15 @@
 
 # TODO: add to objects: the passed lower-meta objects
 
-# reads the source
+# =============================================================================
+# # CHARACTER READER
+#
+# # reads the source
+# =============================================================================
+
 class CharacterReader:
     def __init__(self, buffer):
         self.buffer = buffer
-        # self.index = 0
         
     def _print(self):
         print(self.buffer)
@@ -17,7 +21,6 @@ class CharacterReader:
     def consume(self, i = 0):
         ret_char = self.buffer[i]
         self.buffer = self.buffer[:i]+self.buffer[i+1:]
-        #self.index = self.index + i
         return ret_char
     
     #if the buffer is empty we return True
@@ -27,41 +30,12 @@ class CharacterReader:
             return False
         except IndexError:
             return True
-        
-    # not needed at the moment because i dont want this index-stuff
-    def set_index(self, i):
-        self.index = i
-
-    def get_index(self):
-        return self.index        
-            
-
-# convert input from CharacterReader to tokens
-class Lexer:
-    def __init__(self):
-        self.tokenlist = []
-        self.list_chars = ["*", "+", "-"]
-        self.special_chars = ["\n"] #+ self.list_chars #list of non-string chars
-        #self.index = 0
     
-    def peek(self, k = 0):
-        return self.tokenlist[k]
-    
-    def consume(self, k = 0):
-        #self.index = k
-        del self.tokenlist[k]
-        #self.index = self.index+k
-        
-    def isEOF(self):
-        if len(self.tokenlist) == 0:
-            return True
-        return False
-        
-    def _print(self):
-        for i in self.tokenlist:
-            print(i)
-
 # =============================================================================
+# #LEXER
+# 
+# # convert input from CharacterReader to tokens
+#
 # types:
 # headings:
 #   h1    | content of heading
@@ -82,66 +56,85 @@ class Lexer:
 #   ordered:
 #       ol    | content of list
 # =============================================================================
-                  
-    # pass charread object to function
-    def next_token(self, charreaderobj):
+
+class Lexer:
+    def __init__(self, charreaderobj):
+        self.tokenlist = []
+        self.list_chars = ["*", "+", "-"]
+        self.special_chars = ["\n"] # list of non-string chars
+        self.charreaderobj = charreaderobj
+    
+    def peek(self, k = 0):
+        return self.tokenlist[k]
+    
+    def consume(self, k = 0):
+        del self.tokenlist[k]
         
-        next_char = charreaderobj.peek(0)
+    def isEOF(self):
+        if len(self.tokenlist) == 0:
+            return True
+        return False
+        
+    def _print(self):
+        for i in self.tokenlist:
+            print(i)
+                  
+    def next_token(self):
         
         # headings
-        if next_char == "#":
-            self.head_find(charreaderobj)
+        if self.charreaderobj.peek(0) == "#":
+            self.head_find()
         
         # special chars# unordered list
-        elif next_char == '\n': 
+        elif self.charreaderobj.peek(0) == '\n': 
             self.tokenlist.append(("n", "<br>\n"))
-            charreaderobj.consume(0)
-        elif next_char == '\t':
+            self.charreaderobj.consume(0)
+        elif self.charreaderobj.peek(0) == '\t':
             if self.tokenlist[-1][0] == "t":
                 self.tokenlist[-1][1] += 1
             else:
                 self.tokenlist.append(["t", 1])
-            charreaderobj.consume(0)
+            self.charreaderobj.consume(0)
         
         # lists
-        elif (next_char in self.list_chars) and (charreaderobj.peek(1) == " "): 
+        elif (self.charreaderobj.peek(0) in self.list_chars) and (self.charreaderobj.peek(1) == " "): 
             # consume both the * as well as the following whitespace
-            charreaderobj.consume()
-            charreaderobj.consume()
+            self.charreaderobj.consume()
+            self.charreaderobj.consume()
             
             #call list_find to correctly lex body of list
-            self.list_find(charreaderobj)
+            self.list_find()
             
         # string stuff
-        elif next_char not in self.special_chars:
-            self.string_find(charreaderobj)
+        elif self.charreaderobj.peek(0) not in self.special_chars:
+            self.string_find()
             
         # for now everything that isnt recognized is deleted lol
         else:
-            charreaderobj.consume(0)
+            self.charreaderobj.consume(0)
     
 # =============================================================================
 #     # if we are in a heading state call this function
 # =============================================================================
-    def head_find(self, charreaderobj):
+    def head_find(self):
         return_head = ""
         return_string = ""
         
         #count how many instances of # appear
-        while (not charreaderobj.isEOF()) and (charreaderobj.peek(0) == "#"):
+        while (not self.charreaderobj.isEOF()) and (self.charreaderobj.peek(0) == "#"):
             return_head = return_head + "#"
-            charreaderobj.consume(0)
+            self.charreaderobj.consume(0)
         
         # make sure not more than 6 #'s and next char is a space
         # otherwise we return the #'s as a string and end here
-        if (len(return_head) <= 6) and (charreaderobj.peek(0) == " "):
+        if (len(return_head) <= 6) and (self.charreaderobj.peek(0) == " "):
             
             #everything ucharreaderobj.consume(0)p to a \n is part of the heading
-            while (not charreaderobj.isEOF()) and (not charreaderobj.peek(0) == "\n"):
-                return_string = return_string + charreaderobj.peek(0)
-                charreaderobj.consume(0)
+            while (not self.charreaderobj.isEOF()) and (not self.charreaderobj.peek(0) == "\n"):
+                return_string = return_string + self.charreaderobj.peek(0)
+                self.charreaderobj.consume(0)
             #consume \n
-            charreaderobj.consume(0)
+            self.charreaderobj.consume(0)
             
             # "parse" the two variables together
             return_head = f"h{len(return_head)}"
@@ -154,148 +147,151 @@ class Lexer:
 #     # if we are oin a list state call this function
 #     # TODO: accept ordered lists as well
 # =============================================================================
-    def list_find(self, charreaderobj):
+    def list_find(self):
         #turn list body into a string
-        return_list = self.string_find(charreaderobj, append = False)
+        return_list = self.string_find(append = False)
         
         self.tokenlist.append(("ul", return_list))
 
 # =============================================================================
 #     # if we are in a string state call this function                
 # =============================================================================
-    def string_find(self, charreaderobj, append = True):
+    def string_find(self, append = True):
         return_string = ""
         while True:
-            if charreaderobj.isEOF():
+            if self.charreaderobj.isEOF():
                 break
-            elif (charreaderobj.peek(0) in self.special_chars):
+            elif (self.charreaderobj.peek(0) in self.special_chars):
                 break
-            return_string = return_string + charreaderobj.peek(0)
-            charreaderobj.consume(0)
+            return_string = return_string + self.charreaderobj.peek(0)
+            self.charreaderobj.consume(0)
         
         # if you want the string returned instead of appended
         if append:
             self.tokenlist.append(("s", return_string))
         else:
             return return_string
-        
-        
-    
-    def tokenize(self, charreaderobj):
+
+# Run this function to tokenize all items in the buffer
+    def tokenize(self):
         while True:
-            if charreaderobj.isEOF():# unordered list
+            if self.charreaderobj.isEOF():# unordered list
                 break
-            self.next_token(charreaderobj)
+            self.next_token()
             
             
             
 
         
-    
-# The parser is responsible for reading the tokens from the lexer and 
-# producing the parse-tree. It gets the next token from the lexer,
-# analyzes it, and compare it against a defined grammar.
-
+# =============================================================================
+# # PARSER    
+#     
+# # The parser is responsible for reading the tokens from the lexer and 
+# # producing the parse-tree. It gets the next token from the lexer,
+# # analyzes it, and compare it against a defined grammar.
+# =============================================================================
 
 class Parser:
-    def __init__(self, filename):
+    def __init__(self, filename, lexer_obj):
         self.filename = filename
         
+        # things that always need to be written
         self.beginning =  "<!DOCTYPE html>\n<html>\n<body>\n"
         self.end = "</body>\n</html>\n"
         
+        # list of special chars
         self.list_of_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
         self.list_of_lists = ["ul", "ol"]
         
-    #TODO
-    def parse(self, lexer_obj):
-        f = open(self.filename, "x")
+        # imported types
+        self.lexer_obj = lexer_obj
+        self.f = open(self.filename, "x")
         
+    #TODO
+    def parse(self):
         # write the beginning stuff of an html doc
-        f.write(self.beginning)
+        self.f.write(self.beginning)
         
         #this is where the fun begins
         # begin in a base state
         
         while True:
-            if lexer_obj.isEOF():
+            if self.lexer_obj.isEOF():
                 break
             
-            next_token = lexer_obj.peek()
-            
             # headings
-            if next_token[0] in self.list_of_headers:
-                self.parse_head(f, next_token, lexer_obj) #TODO: eg move this stuff into class
+            if self.lexer_obj.peek()[0] in self.list_of_headers:
+                self.parse_head() #TODO: eg move this stuff into class
                 
             # lists
-            elif next_token[0] in self.list_of_lists:
-                self.parse_list(f, next_token, lexer_obj, list_depth = 0)
+            elif self.lexer_obj.peek()[0] in self.list_of_lists:
+                self.parse_list(list_depth = 0)
 
             
             # paragraphs
             # TODO: move this to a separate function
-            elif next_token[0] == "s":
-                f.write("<p>")
-                while (not lexer_obj.isEOF()) and lexer_obj.peek()[0] in ["s", "n"]:
-                    #print(len(lexer_obj.tokenlist))
-                    #print(lexer_obj.peek()[1])
-                    f.write(lexer_obj.peek()[1])
-                    lexer_obj.consume(0)
-                f.write("</p>\n")
+            elif self.lexer_obj.peek()[0] == "s":
+                self.f.write("<p>")
+                while (not self.lexer_obj.isEOF()) and self.lexer_obj.peek()[0] in ["s", "n"]:
+                    #print(len(self.lexer_obj.tokenlist))
+                    #print(self.lexer_obj.peek()[1])
+                    self.f.write(self.lexer_obj.peek()[1])
+                    self.lexer_obj.consume(0)
+                self.f.write("</p>\n")
                 #lexer_obj.consume()
             
             # if the object is unknown we just boot it for now
             else:
-                lexer_obj.consume()
+                self.lexer_obj.consume()
         
         
         # write the end stuff of an html doc
-        f.write(self.end)
-        f.close()
+        self.f.write(self.end)
+        self.f.close()
         
     #parse heading stuff
-    def parse_head(self, f, next_token, lexer_obj):
-        f.write(f"<{next_token[0]}>")
-        f.write(next_token[1])
-        f.write(f"</{next_token[0]}>\n")
-        lexer_obj.consume()
+    def parse_head(self):
+        self.f.write(f"<{self.lexer_obj.peek()[0]}>")
+        self.f.write(self.lexer_obj.peek()[1])
+        self.f.write(f"</{self.lexer_obj.peek()[0]}>\n")
+        self.lexer_obj.consume()
         
 # =============================================================================
-#     def parse_list(self, f, next_token, lexer_obj, list_depth):
-#         if next_token[0] == "ul":
+#     def parse_list(self, f, list_depth):
+#         if self.lexer_obj.peek()[0] == "ul":
 #             # start by writing the list enclosure
 #             f.write("<ul>\n")
 #             
 #             # parse content of list and, if nescesary, call for sublist
-#             while (not lexer_obj.isEOF()):
+#             while (not self.lexer_obj.isEOF()):
 #                 # TODO: this will break if the user writes a nested list
 #                 # and indents it twice instead of once. fix this
 #                 # check if we are at correct depth, else we break
-#                 if (list_depth > 0) and (lexer_obj.peek()[0] == "t"):
-#                     if list_depth <= lexer_obj.peek()[1]:
-#                         lexer_obj.peek()[1] -= list_depth
+#                 if (list_depth > 0) and (self.lexer_obj.peek()[0] == "t"):
+#                     if list_depth <= self.lexer_obj.peek()[1]:
+#                         self.lexer_obj.peek()[1] -= list_depth
 #                     else:
 #                         break
 #                 
 #                 # if the next token is a \t we call parse list recursively
-#                 if lexer_obj.peek(0)[0] == "t":
-#                     self.parse_list(f, next_token, lexer_obj, list_depth+1)
+#                 if self.lexer_obj.peek(0)[0] == "t":
+#                     self.parse_list(f, self.lexer_obj.peek(), self.lexer_obj, list_depth+1)
 #                     
 #                 # if we dont get another list element we break
-#                 if not (lexer_obj.peek(0)[0] == "ul"):
+#                 if not (self.lexer_obj.peek(0)[0] == "ul"):
 #                     break
 #                 
 #                 # write new list element
 #                 f.write("<li>")
 #                 
 #                 # write what is in list element
-#                 #print(lexer_obj.peek(0)[1])
-#                 f.write(lexer_obj.peek(0)[1])
+#                 #print(self.lexer_obj.peek(0)[1])
+#                 f.write(self.lexer_obj.peek(0)[1])
 #                 
 #                 # consume the list element and the following break
 #                 #TODO: do this with an assertion
-#                 lexer_obj.consume(0)
-#                 lexer_obj.consume(0)
+#                 self.lexer_obj.consume(0)
+#                 self.lexer_obj.consume(0)
 #                 
 #                 # writte the end of list element
 #                 f.write("</li>\n")
@@ -307,39 +303,39 @@ class Parser:
 #             pass
 # =============================================================================
 
-    def parse_list(self, f, next_token, lexer_obj, list_depth):
-        if next_token[0] == "ul":
+    def parse_list(self, list_depth):
+        if self.lexer_obj.peek()[0] == "ul":
             # start by writing the list enclosure
-            f.write("<ul>\n")
+            self.f.write("<ul>\n")
             
             # parse content of list and, if nescesary, call for sublist
-            while (not lexer_obj.isEOF()):
+            while (not self.lexer_obj.isEOF()):
                 
                 #get rid of tabs
-                while (lexer_obj.peek(0)[0] == "t"):
-                    lexer_obj.consume(0)
+                while (self.lexer_obj.peek(0)[0] == "t"):
+                    self.lexer_obj.consume(0)
                     
                 # if we dont get another list element we break
-                if not (lexer_obj.peek(0)[0] == "ul"):
+                if not (self.lexer_obj.peek(0)[0] == "ul"):
                     break
                 
                 # write new list element
-                f.write("<li>")
+                self.f.write("<li>")
                 
                 # write what is in list element
                 #print(lexer_obj.peek(0)[1])
-                f.write(lexer_obj.peek(0)[1])
+                self.f.write(self.lexer_obj.peek(0)[1])
                 
                 # consume the list element and the following break
                 #TODO: do this with an assertion
-                lexer_obj.consume(0)
-                lexer_obj.consume(0)
+                self.lexer_obj.consume(0)
+                self.lexer_obj.consume(0)
                 
                 # writte the end of list element
-                f.write("</li>\n")
+                self.f.write("</li>\n")
                 
             # close list
-            f.write("</ul>\n")
+            self.f.write("</ul>\n")
         # ordered lists
         else:
             pass
