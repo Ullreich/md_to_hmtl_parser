@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+# TODO: add to objects: the passed lower-meta objects
 
 # reads the source
 class CharacterReader:
@@ -61,9 +62,6 @@ class Lexer:
             print(i)
 
 # =============================================================================
-# TODO: impolement \n as a type (and \t?)
-#
-#
 # types:
 # headings:
 #   h1    | content of heading
@@ -77,7 +75,7 @@ class Lexer:
 # lineend:
 #   n     | "<br>\n"
 # tab:
-#   t     | t (for now i guess)
+#   t     | number of \t's that follow each other
 # lists:
 #   unordered:
 #       ul    | content of list
@@ -94,12 +92,15 @@ class Lexer:
         if next_char == "#":
             self.head_find(charreaderobj)
         
-        # special chars
+        # special chars# unordered list
         elif next_char == '\n': 
             self.tokenlist.append(("n", "<br>\n"))
             charreaderobj.consume(0)
         elif next_char == '\t':
-            self.tokenlist.append(("t", "t"))
+            if self.tokenlist[-1][0] == "t":
+                self.tokenlist[-1][1] += 1
+            else:
+                self.tokenlist.append(["t", 1])
             charreaderobj.consume(0)
         
         # lists
@@ -182,7 +183,7 @@ class Lexer:
     
     def tokenize(self, charreaderobj):
         while True:
-            if charreaderobj.isEOF():
+            if charreaderobj.isEOF():# unordered list
                 break
             self.next_token(charreaderobj)
             
@@ -204,6 +205,7 @@ class Parser:
         self.end = "</body>\n</html>\n"
         
         self.list_of_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
+        self.list_of_lists = ["ul", "ol"]
         
     #TODO
     def parse(self, lexer_obj):
@@ -223,9 +225,15 @@ class Parser:
             
             # headings
             if next_token[0] in self.list_of_headers:
-                self.parse_head(f, next_token, lexer_obj)
+                self.parse_head(f, next_token, lexer_obj) #TODO: eg move this stuff into class
+                
+            # lists
+            elif next_token[0] in self.list_of_lists:
+                self.parse_list(f, next_token, lexer_obj, list_depth = 0)
+
             
             # paragraphs
+            # TODO: move this to a separate function
             elif next_token[0] == "s":
                 f.write("<p>")
                 while (not lexer_obj.isEOF()) and lexer_obj.peek()[0] in ["s", "n", "ul"]:
@@ -251,6 +259,51 @@ class Parser:
         f.write(next_token[1])
         f.write(f"</{next_token[0]}>\n")
         lexer_obj.consume()
+        
+    def parse_list(self, f, next_token, lexer_obj, list_depth):
+        if next_token[0] == "ul":
+            # start by writing the list enclosure
+            f.write("<ul>")
+            
+            # parse content of list and, if nescesary, call for sublist
+            while (not lexer_obj.isEOF()):
+                # TODO: this will break if the user writes a nested list
+                # and indents it twice instead of once. fix this
+                # check if we are at correct depth, else we break
+                if (list_depth > 0) and (lexer_obj.peek()[0] == "t"):
+                    if list_depth <= lexer_obj.peek()[1]:
+                        lexer_obj.peek()[1] -= list_depth
+                    else:
+                        break
+                
+                # if the next token is a \t we call parse list recursively
+                if lexer_obj.peek(0)[0] == "t":
+                    self.parse_list(f, next_token, lexer_obj, list_depth+1)
+                    
+                # if we dont get another list element we break
+                if not (lexer_obj.peek(0)[0] == "ul"):
+                    break
+                
+                # write new list element
+                f.write("<li>")
+                
+                # write what is in list element
+                #print(lexer_obj.peek(0)[1])
+                f.write(lexer_obj.peek(0)[1])
+                
+                # consume the list element and the following break
+                #TODO: do this with an assertion
+                lexer_obj.consume(0)
+                lexer_obj.consume(0)
+                
+                # writte the end of list element
+                f.write("</li>")
+                
+            # close list
+            f.write("</ul>")
+        # ordered lists
+        else:
+            pass
         
     
 class ErrorHandler:
