@@ -41,7 +41,7 @@ class Lexer:
     def __init__(self):
         self.tokenlist = []
         self.list_chars = ["*", "+", "-"]
-        self.special_chars = ["\n"] + self.list_chars #list of non-string chars
+        self.special_chars = ["\n"] #+ self.list_chars #list of non-string chars
         #self.index = 0
     
     def peek(self, k = 0):
@@ -236,7 +236,7 @@ class Parser:
             # TODO: move this to a separate function
             elif next_token[0] == "s":
                 f.write("<p>")
-                while (not lexer_obj.isEOF()) and lexer_obj.peek()[0] in ["s", "n", "ul"]:
+                while (not lexer_obj.isEOF()) and lexer_obj.peek()[0] in ["s", "n"]:
                     #print(len(lexer_obj.tokenlist))
                     #print(lexer_obj.peek()[1])
                     f.write(lexer_obj.peek()[1])
@@ -260,25 +260,64 @@ class Parser:
         f.write(f"</{next_token[0]}>\n")
         lexer_obj.consume()
         
+# =============================================================================
+#     def parse_list(self, f, next_token, lexer_obj, list_depth):
+#         if next_token[0] == "ul":
+#             # start by writing the list enclosure
+#             f.write("<ul>\n")
+#             
+#             # parse content of list and, if nescesary, call for sublist
+#             while (not lexer_obj.isEOF()):
+#                 # TODO: this will break if the user writes a nested list
+#                 # and indents it twice instead of once. fix this
+#                 # check if we are at correct depth, else we break
+#                 if (list_depth > 0) and (lexer_obj.peek()[0] == "t"):
+#                     if list_depth <= lexer_obj.peek()[1]:
+#                         lexer_obj.peek()[1] -= list_depth
+#                     else:
+#                         break
+#                 
+#                 # if the next token is a \t we call parse list recursively
+#                 if lexer_obj.peek(0)[0] == "t":
+#                     self.parse_list(f, next_token, lexer_obj, list_depth+1)
+#                     
+#                 # if we dont get another list element we break
+#                 if not (lexer_obj.peek(0)[0] == "ul"):
+#                     break
+#                 
+#                 # write new list element
+#                 f.write("<li>")
+#                 
+#                 # write what is in list element
+#                 #print(lexer_obj.peek(0)[1])
+#                 f.write(lexer_obj.peek(0)[1])
+#                 
+#                 # consume the list element and the following break
+#                 #TODO: do this with an assertion
+#                 lexer_obj.consume(0)
+#                 lexer_obj.consume(0)
+#                 
+#                 # writte the end of list element
+#                 f.write("</li>\n")
+#                 
+#             # close list
+#             f.write("</ul>\n")
+#         # ordered lists
+#         else:
+#             pass
+# =============================================================================
+
     def parse_list(self, f, next_token, lexer_obj, list_depth):
         if next_token[0] == "ul":
             # start by writing the list enclosure
-            f.write("<ul>")
+            f.write("<ul>\n")
             
             # parse content of list and, if nescesary, call for sublist
             while (not lexer_obj.isEOF()):
-                # TODO: this will break if the user writes a nested list
-                # and indents it twice instead of once. fix this
-                # check if we are at correct depth, else we break
-                if (list_depth > 0) and (lexer_obj.peek()[0] == "t"):
-                    if list_depth <= lexer_obj.peek()[1]:
-                        lexer_obj.peek()[1] -= list_depth
-                    else:
-                        break
                 
-                # if the next token is a \t we call parse list recursively
-                if lexer_obj.peek(0)[0] == "t":
-                    self.parse_list(f, next_token, lexer_obj, list_depth+1)
+                #get rid of tabs
+                while (lexer_obj.peek(0)[0] == "t"):
+                    lexer_obj.consume(0)
                     
                 # if we dont get another list element we break
                 if not (lexer_obj.peek(0)[0] == "ul"):
@@ -297,10 +336,10 @@ class Parser:
                 lexer_obj.consume(0)
                 
                 # writte the end of list element
-                f.write("</li>")
+                f.write("</li>\n")
                 
             # close list
-            f.write("</ul>")
+            f.write("</ul>\n")
         # ordered lists
         else:
             pass

@@ -4,10 +4,11 @@
 hello *test\n*
 hi
 
-* 600 euro 
+* 600 euro
 	* 2 Monitore (ca 200 euro)
 	* 2 Tastaturen (ca 60 euro)
 	* 2 Mäuse (ca 40 euro)
+
 
 ###
 * buy computer stuff and do cable management
@@ -21,6 +22,9 @@ hi
 * Beerfridge-wagerl
 * falls zeit: theoretische info exam collection
 * Tobbi sekieren (+ Draggy mail server)
+
+ianderes zueg
+hier aucg
 * Nextcloud (see internal website stuff)
 * new website?
 
