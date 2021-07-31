@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# TODO: add to objects: the passed lower-meta objects
-
 # =============================================================================
 # # CHARACTER READER
 #
@@ -55,6 +53,8 @@ class CharacterReader:
 #       ul    | content of list
 #   ordered:
 #       ol    | content of list
+# italics:
+#   i     | content of italics
 # =============================================================================
 
 class Lexer:
@@ -62,6 +62,7 @@ class Lexer:
         self.tokenlist = []
         self.list_chars = ["*", "+", "-"]
         self.special_chars = ["\n"] # list of non-string chars
+        self.bold_italic_chars = ["*", "_"]
         self.charreaderobj = charreaderobj
     
     def peek(self, k = 0):
@@ -85,16 +86,9 @@ class Lexer:
         if self.charreaderobj.peek(0) == "#":
             self.head_find()
         
-        # special chars# unordered list
-        elif self.charreaderobj.peek(0) == '\n': 
-            self.tokenlist.append(("n", "<br>\n"))
-            self.charreaderobj.consume(0)
-        elif self.charreaderobj.peek(0) == '\t':
-            if self.tokenlist[-1][0] == "t":
-                self.tokenlist[-1][1] += 1
-            else:
-                self.tokenlist.append(["t", 1])
-            self.charreaderobj.consume(0)
+        # special chars
+        elif self.charreaderobj.peek(0) in ['\n', '\t']:\
+            self.special_find()
         
         # lists
         elif (self.charreaderobj.peek(0) in self.list_chars) and (self.charreaderobj.peek(1) == " "): 
@@ -104,15 +98,60 @@ class Lexer:
             
             #call list_find to correctly lex body of list
             self.list_find()
+         
+        # italics
+        #elif (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "): 
+        #    self.italics_find()
             
-        # string stuff
+        # string stuff. do this last so it doesnt accidentally swallow stuff
         elif self.charreaderobj.peek(0) not in self.special_chars:
             self.string_find()
             
         # for now everything that isnt recognized is deleted lol
         else:
             self.charreaderobj.consume(0)
-    
+            
+# =============================================================================
+#     # if we are in a italics state
+# =============================================================================
+    def italics_find(self):
+        # the reason we don't just delete this is so that, in case it wont be
+        # italicised we dont lose this char in the string
+        return_italics = ""
+        self.charreaderobj.consume()
+        
+        while True:
+            # in this case we dont find the end of the italics part
+            # dont forget to add the swallowed * at the beginning
+            if self.charreaderobj.isEOF() or self.charreaderobj.peek() == "\n":
+                self.tokenlist.append(("s", "*"+return_italics))
+                return_italics = False
+                break
+            # in this case we find the end of the italics part
+            elif (self.charreaderobj.peek() == "*") and (return_italics[-1] not in [" ", "*"]):
+                self.charreaderobj.consume()
+                break
+            else:
+                return_italics += self.charreaderobj.peek()
+                self.charreaderobj.consume()
+        
+        if return_italics:
+            self.tokenlist.append(("i", return_italics))
+            
+# =============================================================================
+#     # if we are in a special char state
+# =============================================================================
+    def special_find(self):
+        if self.charreaderobj.peek(0) == '\n': 
+            self.tokenlist.append(("n", "<br>\n"))
+            self.charreaderobj.consume(0)
+        elif self.charreaderobj.peek(0) == '\t':
+            if self.tokenlist[-1][0] == "t":
+                self.tokenlist[-1] = ("t", self.tokenlist[-1][1] + 1)
+            else:
+                self.tokenlist.append(("t", 1))
+            self.charreaderobj.consume(0)
+
 # =============================================================================
 #     # if we are in a heading state call this function
 # =============================================================================
@@ -144,7 +183,7 @@ class Lexer:
             self.tokenlist.append(("s", return_head))
             
 # =============================================================================
-#     # if we are oin a list state call this function
+#     # if we are in a list state call this function
 #     # TODO: accept ordered lists as well
 # =============================================================================
     def list_find(self):
@@ -163,6 +202,15 @@ class Lexer:
                 break
             elif (self.charreaderobj.peek(0) in self.special_chars):
                 break
+            elif (self.charreaderobj.peek(0) in self.bold_italic_chars) and not (self.charreaderobj.peek(1) == " "):
+                # if you want the string returned instead of appended
+                if append:
+                    self.tokenlist.append(("s", return_string))
+                else:
+                    return return_string
+                return_string = ""
+                
+                self.italics_find()
             return_string = return_string + self.charreaderobj.peek(0)
             self.charreaderobj.consume(0)
         
@@ -207,7 +255,6 @@ class Parser:
         self.lexer_obj = lexer_obj
         self.f = open(self.filename, "x")
         
-    #TODO
     def parse(self):
         # write the beginning stuff of an html doc
         self.f.write(self.beginning)
@@ -221,25 +268,16 @@ class Parser:
             
             # headings
             if self.lexer_obj.peek()[0] in self.list_of_headers:
-                self.parse_head() #TODO: eg move this stuff into class
+                self.parse_head()
                 
             # lists
             elif self.lexer_obj.peek()[0] in self.list_of_lists:
                 self.parse_list(list_depth = 0)
 
-            
             # paragraphs
-            # TODO: move this to a separate function
-            elif self.lexer_obj.peek()[0] == "s":
-                self.f.write("<p>")
-                while (not self.lexer_obj.isEOF()) and self.lexer_obj.peek()[0] in ["s", "n"]:
-                    #print(len(self.lexer_obj.tokenlist))
-                    #print(self.lexer_obj.peek()[1])
-                    self.f.write(self.lexer_obj.peek()[1])
-                    self.lexer_obj.consume(0)
-                self.f.write("</p>\n")
-                #lexer_obj.consume()
-            
+            elif self.lexer_obj.peek()[0] in ["s", "i"]:
+                self.parse_paragraph()
+                
             # if the object is unknown we just boot it for now
             else:
                 self.lexer_obj.consume()
@@ -249,7 +287,27 @@ class Parser:
         self.f.write(self.end)
         self.f.close()
         
-    #parse heading stuff
+# =============================================================================
+#     # parse paragraph stuff
+# =============================================================================
+    def parse_paragraph(self):
+        self.f.write("<p>")
+        while (not self.lexer_obj.isEOF()) and self.lexer_obj.peek()[0] in ["s", "n", "i"]:
+            #print(len(self.lexer_obj.tokenlist))
+            #print(self.lexer_obj.peek()[1])
+            if self.lexer_obj.peek()[0] in ["s", "n"]:
+                self.f.write(self.lexer_obj.peek()[1])
+            elif self.lexer_obj.peek()[0] in ["i"]:
+                self.f.write("<em>")
+                self.f.write(self.lexer_obj.peek()[1])
+                self.f.write("</em>")
+            self.lexer_obj.consume(0)
+        self.f.write("</p>\n")
+        
+        
+# =============================================================================
+#     # parse heading stuff
+# =============================================================================
     def parse_head(self):
         self.f.write(f"<{self.lexer_obj.peek()[0]}>")
         self.f.write(self.lexer_obj.peek()[1])
@@ -303,6 +361,9 @@ class Parser:
 #             pass
 # =============================================================================
 
+# =============================================================================
+#     # parse list stuff
+# =============================================================================
     def parse_list(self, list_depth):
         if self.lexer_obj.peek()[0] == "ul":
             # start by writing the list enclosure

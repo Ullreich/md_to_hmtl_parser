@@ -1,8 +1,7 @@
 # Fachschaft
 
 ### Fachschaftspc
-hello *test\n*
-hi
+hello *this is emphasized* hello
 
 * 600 euro
 	* 2 Monitore (ca 200 euro)
